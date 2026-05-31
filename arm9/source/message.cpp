@@ -1,252 +1,133 @@
-#include <stdio.h>
-#include <NDS.h>
+ï»¿#include <stdio.h>
+#include <nds.h>
 
 #include "message.h"
 
-char *errmsg[16];
-char *cnfmsg[11];
-char *cnfmsg2[3];
-char *barmsg[6];
-char *cmd_m[4];
-char *t_msg[22];
-char *savmsg[6];
+char* errmsg[16];
+char* cnfmsg[11];
+char* cnfmsg2[3];
+char* barmsg[6];
+char* cmd_m[4];
+char* t_msg[22];
+char* savmsg[6];
 
-static const char *errmsg_j[16] = {
-	"FAT‚Ì‰Šú‰»‚ÉŽ¸”s‚µ‚Ü‚µ‚½",				// 0
-	"“KØ‚ÈDLDIƒpƒbƒ`‚ðs‚Á‚Ä‚­‚¾‚³‚¢",			// 1
-	"Slot2Šg’£ƒpƒbƒN‚ªƒZƒbƒg‚³‚ê‚Ä‚¢‚Ü‚¹‚ñ",		// 2
-	"Å‰‚©‚ç‚â‚è’¼‚µ‚Ä‚­‚¾‚³‚¢",				// 3
-	"SRAM‚ÌSAVEÃÞ°À‚ªAÁŽ¸‚µ‚Ä‚¢‚Ü‚µ‚½",		// 4
-	"SAVÌ§²Ù‚Ìˆ—‚Ís‚¦‚Ü‚¹‚ñ",				// 5
-	"32MBˆÈã‚Ìƒtƒ@ƒCƒ‹‚Íˆµ‚¦‚Ü‚¹‚ñ",			// 6
-	"Žw’è‚µ‚½ƒtƒ@ƒCƒ‹‚Í‘å‚«‚·‚¬‚Ü‚·",			// 7
-	"16MBˆÈã‚Ìƒtƒ@ƒCƒ‹‚Íˆµ‚¦‚Ü‚¹‚ñ",			// 8
-	"Flash 1Mb‚ÌSAVEƒ^ƒCƒv‚ÍA",			// 9
-	"[EXP128K]‚ÅŽæ‚èˆµ‚¤Ž–‚ª‚Å‚«‚Ü‚¹‚ñ",		// 10
-	"SAVÌ§²Ù‚ª‚ ‚è‚Ü‚¹‚ñI",				// 11
-	"SAVÌ§²Ù‚ðíœ‚µ‚Ä‚¢‚Ü‚¹‚©H",			// 12
-	"(A):Šm”F",							// 13
-	"DSi/3DS‚É‚Í‘Î‰ž‚µ‚Ä‚¨‚è‚Ü‚¹‚ñI",			// 14
-	"DS/DS Lite‚Ì‚Ý‚É‘Î‰ž‚µ‚Ä‚¢‚Ü‚·B"			// 15
+static const char* errmsg_c[16] = {
+	"FATåˆå§‹åŒ–å¤±è´¥",                       // 0
+	"è¯·åº”ç”¨æ­£ç¡®çš„DLDIè¡¥ä¸",               // 1
+	"æœªæ‰¾åˆ°Slot2æ‰©å±•å¡",                  // 2
+	"è¯·ä»Žå¤´é‡æ–°æ‰§è¡Œ",                       // 3
+	"æœªæ‰¾åˆ°SRAMä¿å­˜æ•°æ®",                 // 4
+	"æ— æ³•å¤„ç†SAVæ–‡ä»¶",                    // 5
+	"æ— æ³•åŠ è½½è¶…è¿‡32MBçš„æ–‡ä»¶",             // 6
+	"æ‰€é€‰æ–‡ä»¶è¿‡å¤§",                         // 7
+	"æ— æ³•åŠ è½½è¶…è¿‡16MBçš„æ–‡ä»¶",             // 8
+	"Flash 1Mbä¿å­˜ç±»åž‹",                   // 9
+	"æ— æ³•ç”¨[EXP128K]å¤„ç†",                // 10
+	"æœªæ‰¾åˆ°SAVæ–‡ä»¶ï¼",                    // 11
+	"æ˜¯å¦åˆ é™¤äº†SAVæ–‡ä»¶ï¼Ÿ",                // 12
+	"(A):ç¡®è®¤",                            // 13
+	"ä¸æ”¯æŒDSi/3DSä¸»æœºï¼",                // 14
+	"ä»…å…¼å®¹DS/DS Lite"                     // 15
 };
 
-static const char *errmsg_e[16] = {
-	"FAT initialization failed ",				// 0
-	"Please apply the appropriate DLDI Patch.",	// 1
-	"Slot2 expansion pack not found ",			// 2
-	"Please redo from start.",					// 3
-	"SRAM save data not found ",				// 4
-	"Can't  process to SAV file.",				// 5
-	"Can't load a file above 32MB",				// 6
-	"Selected file too big.",					// 7
-	"Can't load a file above 16MB",				// 8
-	"The SAVE type of Flash 1Mb",				// 9
-	"Can't be treated with [EXP128K].",			// 10
-	"SAV file not found!",						// 11
-	" delete the SAV file?",					// 12
-	"(A):Confirm",								// 13
-	"DSi/3DS Consoles not supported!", 			// 14
-	"Only compatible with DS/DS Lite." 			// 15
+static const char* cnfmsg_c[11] = {
+	"(A):ç¡®å®š  (B):å–æ¶ˆ",                // 0
+	"å°†SRAMå†…å­˜åŒºå­˜æ¡£æ•°æ®",             // 1
+	"å¯¼å‡ºä¸ºSAVæ–‡ä»¶",                      // 2
+	"å°†SAVå­˜æ¡£æ•°æ®æ–‡ä»¶",                    // 3
+	"å¯¼å…¥åˆ°SRAMå†…å­˜åŒº",                   // 4
+	"å°†SRAM.BINæ•°æ®æ–‡ä»¶",                 // 5
+	"å…¨éƒ¨æ¢å¤åˆ°SRAMå†…å­˜åŒº",                      // 6
+	"å°†SRAMå…¨éƒ¨å†…å­˜åŒºæ•°æ®",                 // 7
+	"å¤‡ä»½ä¸ºSRAM.BINæ–‡ä»¶",                      // 8
+	"å¯ä»¥å°†æ­¤Slot2æ‰©å±•å¡è®¾ç½®ä¸º",          // 9
+	"GBA ExpLoaderä¸“ç”¨å—?"                  // 10
 };
 
-
-static const char *cnfmsg_j[11] = {
-	"(A):ŽÀs, (B):ŽæÁ",				// 0
-	"Œ»Ý‚ÌSRAM‚É‚ ‚éSAVEƒf[ƒ^‚ð",			// 1
-	"SAVƒtƒ@ƒCƒ‹‚É•Û‘¶‚µ‚Ü‚·",			// 2
-	"SAVƒtƒ@ƒCƒ‹‚Ìƒf[ƒ^‚ð",			// 3
-	"SRAM‚ÌSAVE‚Éƒ[ƒh‚µ‚Ü‚·",			// 4
-	"‘SSRAM—Ìˆæ‚ðƒoƒbƒNƒAƒbƒvƒtƒ@ƒCƒ‹",		// 5
-	"(SRAM.BIN)‚©‚ç•œ‹Œ‚µ‚Ü‚·",			// 6
-	"‘SSRAM—Ìˆæ‚ðƒoƒbƒNƒAƒbƒv‚Æ‚µ‚Ä",		// 7
-	"SRAM.BIN‚É‘Þ”ð‚µ‚Ü‚·",				// 8
-	"‚±‚ÌSlot2Šg’£ƒpƒbƒN‚ð GBA ExpLoader—p‚É",	// 9
-	"Ý’è(SRAM‚ÍŽ¸‚í‚ê‚Ü‚·)‚µ‚Ä‚¢‚¢‚Å‚·‚©H"	// 10
+static const char* cnfmsg2_c[3] = {
+	"(A):æ˜¯   (B):å¦",                    // 0
+	"æ£€æµ‹åˆ°EZFlash Omegaã€‚",               // 1
+	"è¿™æ˜¯æœ€ç»ˆç‰ˆå—?"                        // 2
 };
 
-
-
-static const char *cnfmsg2_j[3] = {
-	"(A):‚Í‚¢, (B):‚¢‚¢‚¦",		// 0
-	"EZFlash Omega ‚ðŒŸo‚µ‚Ü‚µ‚½B",	// 1
-	"‚±‚ê‚ÍŒˆ’è”Å‚Å‚·‚©H"			// 2
+static const char* barmsg_c[6] = {
+	"  æ­£åœ¨æ“¦é™¤NOR...  ",                 // 0
+	"  æ­£åœ¨çƒ§å½•åˆ°NOR...  ",                 // 1
+	"  æ­£åœ¨åŠ è½½åˆ°RAM... ",                // 2
+	"  æ­£åœ¨åˆ†æžROM...  ",                 // 3
+	"  æ­£åœ¨è¯»å–SRAM...  ",                // 4
+	"  æ­£åœ¨å†™å…¥SRAM...  "                 // 5
 };
 
-static const char *cnfmsg2_e[3] = {
-	"(A):Yes, (B):No",				// 0
-	"Detected EZFlash Omega.",		// 1
-	"Is this Definitive Edition?"	// 2
+static const char* cmd_m_c[4] = {
+	"  éœ‡åŠ¨çº§åˆ«:å¼±  ",
+	"  éœ‡åŠ¨çº§åˆ«:ä¸­  ",
+	"  éœ‡åŠ¨çº§åˆ«:å¼º  ",
+	"  æµè§ˆå™¨ç”¨RAM  "
 };
 
-static const char *cnfmsg_e[11] = {
-	"(A):Run, (B):Cancel",				// 0
-	"Write save data in SRAM",			// 1
-	" to SAV file",					// 2
-	"Load save data in SRAM",			// 3
-	" from SAV file",				// 4
-	"Restore all data in SRAM",			// 5
-	" from file SRAM.BIN",				// 6
-	"Backup all data in SRAM",			// 7
-	" to file SRAM.BIN",				// 8
-	"May I set this Slot2 expansion pack",		// 9
-	"for GBA ExpLoader?"				// 10
+static const char* t_msg_c[22] = {
+	"é€‰æ‹©ä¸­çš„æ¸¸æˆ",                           // 0
+	" PSRAM æ¨¡å¼",                          // 1
+	"(A):å¯åŠ¨æ¸¸æˆ  (B):å°†SRAMå¯¼å‡ºä¸ºSAV",    // 2
+	"(X):å¤‡ä»½å…¨éƒ¨SRAMä¸ºSRAM.BIN",       // 3
+	"(Y):ä»ŽSRAM.BINæ¢å¤åˆ°SRAM",         // 4
+	"(R):åˆ‡æ¢æ¨¡å¼",                        // 5
+	"(L)/(R):åˆ‡æ¢æ¨¡å¼",                    // 6
+	"(L):åˆ‡æ¢æ¨¡å¼",                        // 7
+	" NOR æ¨¡å¼",                            // 8
+	"(A):çƒ§å½•æ¸¸æˆ  (X):å¯åŠ¨NORä¸­çš„æ¸¸æˆ", // 9
+	"(B):å°†SRAMå¯¼å‡ºä¸ºSAVæ–‡ä»¶",         // 10
+	"(Y):å°†SAVæ–‡ä»¶å¯¼å…¥åˆ°SRAM",            // 11
+	"[%s]%dæ¸¸æˆ",                       // 12
+	"ç©ºæˆ–æ–°çŠ¶æ€",                           // 13
+	"å½“å‰SRAMä¸­çš„å­˜æ¡£",                       // 14
+	" == æœªæ‰¾åˆ°GBAæ–‡ä»¶ == ",              // 15
+	"åˆå§‹åŒ–ä¸­....",                         // 16
+	"æ‰©å±•æ¨¡å¼",                             // 17
+	"(A):è®¾ç½®æ¨¡å¼å¹¶è½¯å¤ä½",               // 18
+	"(L):åˆ‡æ¢æ¨¡å¼",                        // 19
+	"(R):æ‰©å±•RAM",                        // 20
+	" SDRAM æ¨¡å¼",                          // 21
 };
 
-
-static const char *barmsg_j[6] = {
-	"  NOR‚ðÁ‹Ž’†...  ",				// 0
-	" NOR‚ÉƒRƒs[’†... ",				// 1
-	" RAM‚Éƒ[ƒh’†... ",				// 2
-	"  ROM‚ð‰ðÍ’†...  ",				// 3
-	"  SRAM‚Ì“Ç‚ÝŽæ‚è  ",				// 4
-	"  SRAM‚Ö‚Ì‘‚«ž‚Ý  "				// 5
+static const char* savmsg_c[6] = {
+	" å°†SAVæ–‡ä»¶å¯¼å…¥åˆ°SRAM",                // 0
+	"(A):å¯¼å…¥æ‰€é€‰æ–‡ä»¶",                    // 1
+	"(B):ä¸å¯¼å…¥(æ–°æ¸¸æˆ)",                 // 2
+	" å°†SRAMå¯¼å‡ºä¸ºSAVæ–‡ä»¶",               // 3
+	"(A):å¯¼å‡ºæ‰€é€‰æ–‡ä»¶",                    // 4
+	"(B):ä¸å¯¼å‡º(å–æ¶ˆ)"                    // 5
 };
-
-static const char *barmsg_e[6] = {
-	"  Erasing NOR...   ",				// 0
-	" Copying to NOR... ",				// 1
-	" Loading to RAM... ",				// 2
-	" Analyzing ROM...  ",				// 3
-	" Reading SRAM...  ",				// 4
-	" Writing SRAM...  "				// 5
-};
-
-
-static const char *cmd_m_j[4] = {
-	"  U“®ƒŒƒxƒ‹ F (¬)  ",
-	"  U“®ƒŒƒxƒ‹ F (’†)  ",
-	"  U“®ƒŒƒxƒ‹ F (‘å)  ",
-	" ƒuƒ‰ƒEƒU—pŠg’£ƒƒ‚ƒŠ "
-};
-
-static const char *cmd_m_e[4] = {
-	" Rumble level: Weak   ",
-	" Rumble level: Medium ",
-	" Rumble level: Strong ",
-	" Expansion RAM        "
-};
-
-
-static const char *t_msg_j[22] = {
-	"‘I‘ð’†‚ÌƒQ[ƒ€",
-	" PSRAMƒ‚[ƒh",
-	"(A):RAM‚ÉƒQ[ƒ€‚ðƒ[ƒh‚µ‚ÄŽÀs    ",
-	"(B):SRAM‚ÌSAVEÃÞ°À‚ð SAVÌ§²Ù‚É•Û‘¶ ",
-	"  ‘SSRAMÃÞ°À—Ìˆæ (X):‘Þ”ð, (Y):•œ‹Œ",
-	"(R):ƒ‚[ƒh•ÏX                    ",
-	"(L)/(R):ƒ‚[ƒh•ÏX                ",
-	"(L):ƒ‚[ƒh•ÏX                    ",
-	"  NORƒ‚[ƒh ",
-	"(A):ƒQ[ƒ€‚ÌƒRƒs[  (X):NOR‚ðŽÀs  ",
-	"(B):SRAM‚ÌSAVEÃÞ°À‚ð SAVÌ§²Ù‚É•Û‘¶ ",		// 10
-	"(Y):SAVÌ§²Ù‚ð SRAM‚ÌSAVE‚Éƒ[ƒh   ",
-	"[%s] %d ƒQ[ƒ€",
-	"ÁŽ¸‚à‚µ‚­‚ÍV‹Kó‘Ô",
-	"Œ»Ý‚ÌSRAM‚ÌSAVE",
-	" == GBAƒtƒ@ƒCƒ‹‚ª‚ ‚è‚Ü‚¹‚ñ == ",
-	"‰Šú‰»’†....",
-	"  Šg’£ƒ‚[ƒh",
-	"(A):3in1‚ðÝ’è‚µ‚ÄƒŠƒZƒbƒg",
-	"(L):ƒ‚[ƒh•ÏX                   ",
-	"(R):ƒuƒ‰ƒEƒU—pŠg’£ƒƒ‚ƒŠ         ",
-	" SDRAMƒ‚[ƒh",
-};
-
-static const char *t_msg_e[22] = {
-	"Selected game",
-	"  PSRAM Mode ",
-	"(A):Run (B):Write SRAM to SAV file",
-	"(X):Backup whole SRAM to SRAM.BIN ",
-	"(Y):Restore SRAM.BIN to SRAM      ",
-	"(R):Change mode                 ",
-	"(L)/(R):Change mode             ",
-	"(L):Change mode                 ",
-	"   NOR mode  ",
-	"(A):Copy game (X):Run game in NOR ",
-	"(B):Write SRAM to SAV file        ",		// 10
-	"(Y):Load SAV file to SRAM         ",
-	"[%s] %d game",
-	"Empty or new state",
-	"Current SRAM Save",
-	" == GBA file not found == ",
-	"Initialize....",
-	"Expansion mode",
-	"(A):Set mode and soft reset",
-	"(L):Change mode                ",
-	"(R):Expansion RAM              ",
-	"  SDRAM Mode ",
-};
-
-
-static const char *savmsg_j[6] = {
-	" SRAM‚ÉSAVEƒf[ƒ^‚ðƒ[ƒh",		// 0
-	"(A):‘I‘ð‚µ‚½ƒtƒ@ƒCƒ‹‚ðƒ[ƒh",		// 1
-	"(B):ƒ[ƒh‚µ‚È‚¢(V‹KƒQ[ƒ€)",		// 2
-	" SRAM‚ÌSAVEƒf[ƒ^‚ð•Û‘¶  ",		// 3
-	"(A):‘I‘ð‚µ‚½ƒtƒ@ƒCƒ‹‚É•Û‘¶",		// 4
-	"(B):•Û‘¶‚µ‚È‚¢(ŽæÁ)",			// 5
-};
-
-static const char *savmsg_e[6] = {
-	" Load SRAM from SAV file ",		// 0
-	"(A):Load from selected file",		// 1
-	"(B):No load(New Game)",		// 2
-	" Write SRAM to SAV file  ",		// 3
-	"(A):write to selected file",		// 4
-	"(B):No write(Cancel)",			// 5
-};
-
 
 void setLangMsg() {
-	u32	UserLang = 0;
-	int	i;
-
-	UserLang = PersonalData->language;
-
-	if(UserLang != 0) {
-		for(i = 0; i < 16; i++)errmsg[i] = (char*)errmsg_e[i];
-		for(i = 0; i < 11; i++)cnfmsg[i] = (char*)cnfmsg_e[i];
-		for(i = 0; i < 3; i++)cnfmsg2[i] = (char*)cnfmsg2_e[i];
-		for(i = 0; i < 6; i++)barmsg[i] = (char*)barmsg_e[i];
-		for(i = 0; i < 4; i++)cmd_m[i] = (char*)cmd_m_e[i];
-		for(i = 0; i < 22; i++)t_msg[i] = (char*)t_msg_e[i];
-		for(i = 0; i < 6; i++)savmsg[i] = (char*)savmsg_e[i];
-		return;
-	}
-
-	for(i = 0; i < 16; i++)errmsg[i] = (char*)errmsg_j[i];
-	for(i = 0; i < 11; i++)cnfmsg[i] = (char*)cnfmsg_j[i];
-	for(i = 0; i < 3; i++)cnfmsg2[i] = (char*)cnfmsg2_j[i];
-	for(i = 0; i < 6; i++)barmsg[i] = (char*)barmsg_j[i];
-	for(i = 0; i < 4; i++)cmd_m[i] = (char*)cmd_m_j[i];
-	for(i = 0; i < 22; i++)t_msg[i] = (char*)t_msg_j[i];
-	for(i = 0; i < 6; i++)savmsg[i] = (char*)savmsg_j[i];
+	int i;
+	for (i = 0; i < 16; i++) errmsg[i] = (char*)errmsg_c[i];
+	for (i = 0; i < 11; i++) cnfmsg[i] = (char*)cnfmsg_c[i];
+	for (i = 0; i < 3; i++)  cnfmsg2[i] = (char*)cnfmsg2_c[i];
+	for (i = 0; i < 6; i++)  barmsg[i] = (char*)barmsg_c[i];
+	for (i = 0; i < 4; i++)  cmd_m[i] = (char*)cmd_m_c[i];
+	for (i = 0; i < 22; i++) t_msg[i] = (char*)t_msg_c[i];
+	for (i = 0; i < 6; i++)  savmsg[i] = (char*)savmsg_c[i];
 }
 
 static bool _isKanji1(u8 ch) {
-	if((ch >= 0x81) && (ch <= 0x9F))return true;
-	if((ch >= 0xE0) && (ch <= 0xEF))return true;
-	if((ch >= 0xFA) && (ch <= 0xFB))return true; // JIS X 0218‘¼ IBMŠg’£•¶Žš (0xFA40-0xFC4B)
+	if ((ch >= 0x81) && (ch <= 0x9F))return true;
+	if ((ch >= 0xE0) && (ch <= 0xEF))return true;
+	if ((ch >= 0xFA) && (ch <= 0xFB))return true;
 	return false;
 }
 
-char *jstrncpy(char *s1, char *s2, size_t n) {
+char* jstrncpy(char* s1, char* s2, size_t n) {
 	bool kan = false;
-
-	char *p = s1;
-
-	while(n) {
+	char* p = s1;
+	while (n) {
 		n--;
 		kan = _isKanji1((u8)*s2);
-		if(!(*s1++ = *s2++))break;
+		if (!(*s1++ = *s2++))break;
 	}
-
-	if(kan)*(s1 - 1) = '\0';
-
-	while(n--)*s1++ = '\0';
-
+	if (kan)*(s1 - 1) = '\0';
+	while (n--)*s1++ = '\0';
 	*s1 = '\0';
-
 	return(p);
 }
-
