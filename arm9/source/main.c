@@ -563,37 +563,149 @@ void _gba_dsp(int no, int mod, int x, int y) {
 	nameBuf[sizeof(nameBuf) - 1] = '\0';
 
 	if (mod == 1) {
+		int max_pixels = 256 - x * 6;
+
 		if (fs[sn].type & S_IFDIR) {
-			snprintf(tbuf, sizeof(tbuf), " %-35s <DIR>", nameBuf);
-			g_scroll_active = 0;
-		}
-		else {
-			snprintf(tbuf, sizeof(tbuf), " %-31s", nameBuf);
-			if (!g_scroll_redraw) {
-				int max_pixels = 256 - x * 6;
-				int total_pixels = 0;
-				const char* p = tbuf;
+			char fullStr[512];
+			snprintf(fullStr, sizeof(fullStr), " %s <文件夹>", nameBuf);
+
+			int total_pixels = 0;
+			const char* ptr = fullStr;
+			while (*ptr) {
+				int clen = 1;
+				if ((*ptr & 0x80) == 0) clen = 1;
+				else if ((*ptr & 0xE0) == 0xC0) clen = 2;
+				else if ((*ptr & 0xF0) == 0xE0) clen = 3;
+				else if ((*ptr & 0xF8) == 0xF0) clen = 4;
+				total_pixels += 8;
+				for (int i = 0; i < clen && *ptr; i++) ptr++;
+			}
+
+			int name_max_pixels = max_pixels - 48;
+			if (name_max_pixels < 0) name_max_pixels = 0;
+
+			if (total_pixels > max_pixels) {
+				if (!g_scroll_redraw) {
+					g_scroll_active = 1;
+					g_scroll_max = total_pixels - max_pixels;
+				}
+
+				char namePart[512];
+				snprintf(namePart, sizeof(namePart), " %s", nameBuf);
+
+				const char* draw_start = namePart;
+				int skip = g_scroll_offset;
+				while (skip >= 8 && *draw_start) {
+					int clen = 1;
+					if ((*draw_start & 0x80) == 0) clen = 1;
+					else if ((*draw_start & 0xE0) == 0xC0) clen = 2;
+					else if ((*draw_start & 0xF0) == 0xE0) clen = 3;
+					else if ((*draw_start & 0xF8) == 0xF0) clen = 4;
+					for (int i = 0; i < clen && *draw_start; i++) draw_start++;
+					skip -= 8;
+				}
+
+				const char* end = draw_start;
+				int cur_w = 0;
+				while (*end) {
+					int clen = 1;
+					if ((*end & 0x80) == 0) clen = 1;
+					else if ((*end & 0xE0) == 0xC0) clen = 2;
+					else if ((*end & 0xF0) == 0xE0) clen = 3;
+					else if ((*end & 0xF8) == 0xF0) clen = 4;
+					if (cur_w + 8 > name_max_pixels) break;
+					cur_w += 8;
+					for (int i = 0; i < clen && *end; i++) end++;
+				}
+				int len = end - draw_start;
+				int pos = 0;
+				for (int i = 0; i < len; i++) tbuf[pos++] = draw_start[i];
+				int used = cur_w + 48;
+				int padding = max_pixels - used;
+				if (padding > 0) {
+					int spaces = padding / 8;
+					for (int i = 0; i < spaces; i++) tbuf[pos++] = ' ';
+				}
+				strcpy(tbuf + pos, " <文件夹>");
+			}
+			else {
+				g_scroll_active = 0;
+				g_scroll_max = 0;
+				int name_max_pixels_no_scroll = max_pixels - 8 - 48;
+				if (name_max_pixels_no_scroll < 0) name_max_pixels_no_scroll = 0;
+
+				char cut_name[256];
+				strncpy(cut_name, nameBuf, sizeof(cut_name));
+				char* p = cut_name, * last = cut_name;
+				int cur_w = 0;
 				while (*p) {
 					int clen = 1;
 					if ((*p & 0x80) == 0) clen = 1;
 					else if ((*p & 0xE0) == 0xC0) clen = 2;
 					else if ((*p & 0xF0) == 0xE0) clen = 3;
 					else if ((*p & 0xF8) == 0xF0) clen = 4;
-					total_pixels += 8;
+					if (cur_w + 8 > name_max_pixels_no_scroll) break;
+					cur_w += 8;
 					for (int i = 0; i < clen && *p; i++) p++;
+					last = p;
 				}
-				if (total_pixels > max_pixels) {
-					g_scroll_active = 1;
-					g_scroll_max = total_pixels - max_pixels;
-				}
-				else {
-					g_scroll_active = 0;
-					g_scroll_max = 0;
-				}
+				*last = '\0';
+
+				int name_pixels = cur_w;
+				int used = 8 + name_pixels + 48;
+				int padding = max_pixels - used;
+				if (padding < 0) padding = 0;
+				int spaces = padding / 8;
+
+				int pos = 0;
+				tbuf[pos++] = ' ';
+				for (char* s = cut_name; *s; s++) tbuf[pos++] = *s;
+				for (int i = 0; i < spaces; i++) tbuf[pos++] = ' ';
+				strcpy(tbuf + pos, " <文件夹>");
+			}
+
+			DrawBox(MainScreen, x * 6, y * 12 - 2, 255, y * 12 + 9, RGB15(3, 3, 3), 1);
+			fontPrint(MainScreen, x * 6, y * 12, tbuf, highlightTextColor, RGB15(3, 3, 3));
+
+			if (g_scroll_redraw) return;
+
+			if (GBAmode == 0) {
+				DrawBox_SUB(SubScreen, 6, 32, 249, 76, 5, 0);
+				DrawBox_SUB(SubScreen, 8, 34, 247, 74, 5, 0);
+			}
+			else {
+				DrawBox_SUB(SubScreen, 6, 32, 249, 76, 3, 0);
+				DrawBox_SUB(SubScreen, 8, 34, 247, 74, 3, 0);
+			}
+			DrawBox_SUB(SubScreen, 9, 4 * 12, 246, 6 * 12 - 1, 0, 1);
+			fontPrintSub(SubScreen, 2 * 6, 3 * 12, t_msg[0], 1, 0);
+
+			return;
+		}
+
+		snprintf(tbuf, sizeof(tbuf), " %-31s", nameBuf);
+		if (!g_scroll_redraw) {
+			int total_pixels = 0;
+			const char* p = tbuf;
+			while (*p) {
+				int clen = 1;
+				if ((*p & 0x80) == 0) clen = 1;
+				else if ((*p & 0xE0) == 0xC0) clen = 2;
+				else if ((*p & 0xF0) == 0xE0) clen = 3;
+				else if ((*p & 0xF8) == 0xF0) clen = 4;
+				total_pixels += 8;
+				for (int i = 0; i < clen && *p; i++) p++;
+			}
+			if (total_pixels > max_pixels) {
+				g_scroll_active = 1;
+				g_scroll_max = total_pixels - max_pixels;
+			}
+			else {
+				g_scroll_active = 0;
+				g_scroll_max = 0;
 			}
 		}
 
-		int max_pixels = 256 - x * 6;
 		if (g_scroll_active) {
 			const char* draw_start = tbuf;
 			int skip_pixels = g_scroll_offset;
@@ -695,13 +807,45 @@ void _gba_dsp(int no, int mod, int x, int y) {
 		}
 	}
 	else {
+		int max_pixels = 256 - x * 6;
+
 		if (fs[sn].type & S_IFDIR) {
-			snprintf(tbuf, sizeof(tbuf), " %-35s <DIR>", nameBuf);
+			int max_name_pixels = max_pixels - 8 - 48;
+			if (max_name_pixels < 0) max_name_pixels = 0;
+
+			char cut_name[256];
+			strncpy(cut_name, nameBuf, sizeof(cut_name));
+			char* p = cut_name, * last = cut_name;
+			int cur_w = 0;
+			while (*p) {
+				int clen = 1;
+				if ((*p & 0x80) == 0) clen = 1;
+				else if ((*p & 0xE0) == 0xC0) clen = 2;
+				else if ((*p & 0xF0) == 0xE0) clen = 3;
+				else if ((*p & 0xF8) == 0xF0) clen = 4;
+				if (cur_w + 8 > max_name_pixels) break;
+				cur_w += 8;
+				for (int i = 0; i < clen && *p; i++) p++;
+				last = p;
+			}
+			*last = '\0';
+
+			int name_pixels = cur_w;
+			int used = 8 + name_pixels + 48;
+			int padding = max_pixels - used;
+			if (padding < 0) padding = 0;
+			int spaces = padding / 8;
+
+			int pos = 0;
+			tbuf[pos++] = ' ';
+			for (char* s = cut_name; *s; s++) tbuf[pos++] = *s;
+			for (int i = 0; i < spaces; i++) tbuf[pos++] = ' ';
+			strcpy(tbuf + pos, " <文件夹>");
 		}
 		else {
 			snprintf(tbuf, sizeof(tbuf), " %-31s", nameBuf);
 		}
-		int max_pixels = 256 - x * 6;
+
 		char* p = tbuf, * last = tbuf;
 		int cur_w = 0;
 		while (*p) {
@@ -785,10 +929,8 @@ void _gba_sel_dsp(int no, int yc, int mod) {
 		ClearBG(MainScreen, RGB15(6, 6, 6));
 		DrawBox(MainScreen, 0, 0, 255, 11, RGB15(0, 0, 0), 1);
 		sprintf(tbuf, t_msg[12], curpath, numGames);
-		len = strlen(tbuf);
-		if (len > 40)	len -= 40;
-		else		len = 0;
-		fontPrint(MainScreen, 0, 0, tbuf + len, RGB15(30, 30, 30), RGB15(0, 0, 0));
+		if (strlen(tbuf) > 40) tbuf[40] = '\0';
+		fontPrint(MainScreen, 0, 0, tbuf, RGB15(30, 30, 30), RGB15(0, 0, 0));
 
 		{
 			char rightStr[] = "中文版:shooterspps";
