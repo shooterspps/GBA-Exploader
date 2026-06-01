@@ -72,6 +72,9 @@ bool softReset;
 u16* gbar = NULL;
 int	oldper;
 
+// Persistent storage for NOR game filename to support custom frames after power off
+static char g_norRomName[256] = { 0 };
+
 extern bool checkSRAM_cnf();
 extern int checkSRAM(char* name);
 extern int carttype;
@@ -166,6 +169,23 @@ void gba_frame(int Sel) {
 	int	ret;
 	int mode = 3; // old mode == 2
 
+	// For NOR mode, try to load a frame matching the stored game name
+	if (Sel == -1 && g_norRomName[0] != '\0') {
+		int nameLength = strlen(g_norRomName);
+		if (nameLength > 4) {
+			char tmpName[256];
+			strncpy(tmpName, g_norRomName, sizeof(tmpName) - 1);
+			tmpName[sizeof(tmpName) - 1] = '\0';
+			tmpName[nameLength - 3] = 'b';
+			tmpName[nameLength - 2] = 'm';
+			tmpName[nameLength - 1] = 'p';
+			sprintf(tbuf, "%s/%s", ini.sign_dir, tmpName);
+			if (access(tbuf, F_OK) == 0) {
+				if (LoadSkin(mode, tbuf)) return;
+			}
+		}
+	}
+
 	if (Sel != -1) {
 		int nameLength = strlen(fs[Sel].filename);
 		if (nameLength > 4) {
@@ -178,15 +198,18 @@ void gba_frame(int Sel) {
 					(fs[Sel].filename[(nameLength - 3)] == 'g') &&
 					(fs[Sel].filename[(nameLength - 2)] == 'b') &&
 					(fs[Sel].filename[(nameLength - 1)] == 'a')
-					)
-				) {
-				fs[Sel].filename[(nameLength - 3)] = 'b';
-				fs[Sel].filename[(nameLength - 2)] = 'm';
-				fs[Sel].filename[(nameLength - 1)] = 'p';
-				sprintf(tbuf, "%s/%s", ini.sign_dir, fs[Sel].filename);
+					)) {
+				// Use a temporary copy to avoid corrupting the original filename
+				char tmpName[256];
+				strncpy(tmpName, fs[Sel].filename, sizeof(tmpName) - 1);
+				tmpName[sizeof(tmpName) - 1] = '\0';
+				tmpName[nameLength - 3] = 'b';
+				tmpName[nameLength - 2] = 'm';
+				tmpName[nameLength - 1] = 'p';
+				sprintf(tbuf, "%s/%s", ini.sign_dir, tmpName);
 				if (access(tbuf, F_OK) == 0) {
 					ret = LoadSkin(mode, tbuf);
-					if (ret)return;
+					if (ret) return;
 				}
 			}
 		}
@@ -1193,6 +1216,16 @@ int gba_sel() {
 
 		if (ky & KEY_X) {
 			if (GBAmode == 1) {
+				// Read the stored game name for NOR mode
+				FILE* f = fopen("/GBA_SIGN/lastnor.txt", "r");
+				if (f) {
+					if (fgets(g_norRomName, sizeof(g_norRomName), f)) {
+						size_t len = strlen(g_norRomName);
+						if (len > 0 && g_norRomName[len - 1] == '\n')
+							g_norRomName[len - 1] = '\0';
+					}
+					fclose(f);
+				}
 				SetRompage(0);
 				SetRampage(16);
 				gbaMode(-1);
@@ -1252,8 +1285,13 @@ int gba_sel() {
 				cmd = -1;
 				break;
 			}
-			if (GBAmode == 0) { ret = writeFileToRam(sortfile[sel]); }
-			else { ret = writeFileToNor(sortfile[sel]); }
+
+			if (GBAmode == 0) {
+				ret = writeFileToRam(sortfile[sel]);
+			}
+			else {
+				ret = writeFileToNor(sortfile[sel]);
+			}
 			if (ret != 0) {
 				if (ret == 2) {
 					err_cnf(9, 10);
@@ -1266,6 +1304,14 @@ int gba_sel() {
 			else {
 				if (GBAmode == 0) {
 					gbaMode(sortfile[sel]);
+				}
+				else {
+					// NOR flash succeeded, save the filename for future frame loading
+					FILE* f = fopen("/GBA_SIGN/lastnor.txt", "w");
+					if (f) {
+						fprintf(f, "%s", fs[sortfile[sel]].filename);
+						fclose(f);
+					}
 				}
 			}
 			_gba_sel_dsp(sel, yc, 0);
